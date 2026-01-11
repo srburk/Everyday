@@ -42,7 +42,33 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
 
   await runMigrations(db);
 
+  // Clean up expired archived habits
+  await cleanupExpiredArchivedHabits(db);
+
   console.log(`Connected to database at ${db.databasePath}`);
+}
+
+async function cleanupExpiredArchivedHabits(db: SQLiteDatabase): Promise<void> {
+  // Get deletion policy from settings (default 30 days)
+  const result = await db.getFirstAsync<{ value: string }>(
+    "SELECT value FROM settings WHERE key = 'deletion_policy_days'"
+  );
+  const deletionPolicyDays = result ? parseInt(result.value, 10) : 30;
+
+  // Calculate cutoff date
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - deletionPolicyDays);
+  const cutoffISO = cutoffDate.toISOString();
+
+  // Delete expired archived habits
+  const deleteResult = await db.runAsync(
+    "DELETE FROM habits WHERE archived_at IS NOT NULL AND archived_at < ?",
+    [cutoffISO]
+  );
+
+  if (deleteResult.changes > 0) {
+    console.log(`Cleaned up ${deleteResult.changes} expired archived habit(s)`);
+  }
 }
 
 async function getSchemaVersion(db: SQLiteDatabase): Promise<number> {

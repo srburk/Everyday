@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { HabitList } from "../components/habits/HabitList";
 import { HabitSheet } from "../components/habits/HabitSheet";
 import { SettingsSheet } from "../components/settings/SettingsSheet";
+import { ArchivedHabitsSheet } from "../components/settings/ArchivedHabitsSheet";
 import { useHabits } from "../hooks/useHabits";
 import { useSettings } from "../hooks/useSettings";
 import { Colors } from "../constants/colors";
@@ -17,6 +18,7 @@ export default function HabitsScreen() {
   const { settings, updateSetting } = useSettings();
   const [showCreate, setShowCreate] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showArchivedHabits, setShowArchivedHabits] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -65,9 +67,15 @@ export default function HabitsScreen() {
         settings={settings}
         onUpdateSetting={updateSetting}
         onOpenArchivedHabits={() => {
-          // Will be implemented in Phase 4
           setShowSettings(false);
+          setShowArchivedHabits(true);
         }}
+      />
+
+      <ArchivedHabitsSheet
+        visible={showArchivedHabits}
+        onDismiss={() => setShowArchivedHabits(false)}
+        onHabitRestored={refresh}
       />
     </View>
   );
