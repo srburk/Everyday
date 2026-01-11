@@ -11,6 +11,8 @@ export interface Habit {
   name: string;
   frequency: HabitFrequency;
   color: string;
+  icon: string | null;
+  sortOrder: number;
   createdAt: string; // ISO date
   archivedAt: string | null;
 }
@@ -32,4 +34,9 @@ export interface CreateHabitInput {
   name: string;
   frequency: HabitFrequency;
   color?: string;
+  icon?: string;
+}
+
+export interface ArchivedHabit extends Habit {
+  daysRemaining: number;
 }

@@ -6,6 +6,7 @@ import type {
   HabitCompletion,
   HabitWithStats,
   CreateHabitInput,
+  ArchivedHabit,
 } from "../models/habit";
 import {
   getTodayString,
@@ -23,6 +24,8 @@ function rowToHabit(row: Record<string, unknown>): Habit {
       timesPerWeek: row.frequency_times_per_week as number | undefined,
     },
     color: row.color as string,
+    icon: (row.icon as string | null) ?? null,
+    sortOrder: (row.sort_order as number) ?? 0,
     createdAt: row.created_at as string,
     archivedAt: row.archived_at as string | null,
   };
@@ -30,7 +33,7 @@ function rowToHabit(row: Record<string, unknown>): Habit {
 
 export async function getHabits(db: SQLiteDatabase): Promise<Habit[]> {
   const rows = await db.getAllAsync(
-    "SELECT * FROM habits WHERE archived_at IS NULL ORDER BY created_at DESC"
+    "SELECT * FROM habits WHERE archived_at IS NULL ORDER BY sort_order ASC, created_at DESC"
   );
   return (rows as Record<string, unknown>[]).map(rowToHabit);
 }
@@ -53,10 +56,17 @@ export async function createHabit(
   const id = generateId();
   const createdAt = new Date().toISOString();
   const color = input.color || "#007AFF";
+  const icon = input.icon || null;
+
+  // Get max sort_order to add new habit at the end
+  const maxOrderResult = await db.getFirstAsync<{ max_order: number | null }>(
+    "SELECT MAX(sort_order) as max_order FROM habits WHERE archived_at IS NULL"
+  );
+  const sortOrder = (maxOrderResult?.max_order ?? -1) + 1;
 
   await db.runAsync(
-    `INSERT INTO habits (id, name, frequency_type, frequency_days, frequency_times_per_week, color, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO habits (id, name, frequency_type, frequency_days, frequency_times_per_week, color, icon, sort_order, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       input.name,
@@ -64,6 +74,8 @@ export async function createHabit(
       input.frequency.days ? JSON.stringify(input.frequency.days) : null,
       input.frequency.timesPerWeek || null,
       color,
+      icon,
+      sortOrder,
       createdAt,
     ]
   );
@@ -73,6 +85,8 @@ export async function createHabit(
     name: input.name,
     frequency: input.frequency,
     color,
+    icon,
+    sortOrder,
     createdAt,
     archivedAt: null,
   };
@@ -103,6 +117,11 @@ export async function updateHabit(
   if (updates.color !== undefined) {
     sets.push("color = ?");
     values.push(updates.color);
+  }
+
+  if (updates.icon !== undefined) {
+    sets.push("icon = ?");
+    values.push(updates.icon || null);
   }
 
   if (sets.length > 0) {
@@ -226,4 +245,83 @@ export async function getHabitsWithStats(
   );
 
   return habitsWithStats;
+}
+
+// Archived habits
+
+export async function getArchivedHabits(
+  db: SQLiteDatabase,
+  deletionPolicyDays: number = 30
+): Promise<ArchivedHabit[]> {
+  const rows = await db.getAllAsync(
+    "SELECT * FROM habits WHERE archived_at IS NOT NULL ORDER BY archived_at DESC"
+  );
+
+  const now = new Date();
+  return (rows as Record<string, unknown>[]).map((row) => {
+    const habit = rowToHabit(row);
+    const archivedDate = new Date(habit.archivedAt!);
+    const daysSinceArchived = Math.floor(
+      (now.getTime() - archivedDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    const daysRemaining = Math.max(0, deletionPolicyDays - daysSinceArchived);
+
+    return {
+      ...habit,
+      daysRemaining,
+    };
+  });
+}
+
+export async function restoreHabit(
+  db: SQLiteDatabase,
+  id: string
+): Promise<void> {
+  // Get max sort_order to add restored habit at the end
+  const maxOrderResult = await db.getFirstAsync<{ max_order: number | null }>(
+    "SELECT MAX(sort_order) as max_order FROM habits WHERE archived_at IS NULL"
+  );
+  const sortOrder = (maxOrderResult?.max_order ?? -1) + 1;
+
+  await db.runAsync(
+    "UPDATE habits SET archived_at = NULL, sort_order = ? WHERE id = ?",
+    [sortOrder, id]
+  );
+}
+
+export async function permanentlyDeleteHabit(
+  db: SQLiteDatabase,
+  id: string
+): Promise<void> {
+  await db.runAsync("DELETE FROM habits WHERE id = ?", [id]);
+}
+
+export async function cleanupExpiredHabits(
+  db: SQLiteDatabase,
+  deletionPolicyDays: number = 30
+): Promise<number> {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - deletionPolicyDays);
+  const cutoffISO = cutoffDate.toISOString();
+
+  const result = await db.runAsync(
+    "DELETE FROM habits WHERE archived_at IS NOT NULL AND archived_at < ?",
+    [cutoffISO]
+  );
+
+  return result.changes;
+}
+
+// Reordering
+
+export async function updateHabitOrder(
+  db: SQLiteDatabase,
+  orderedIds: string[]
+): Promise<void> {
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.runAsync(
+      "UPDATE habits SET sort_order = ? WHERE id = ?",
+      [i, orderedIds[i]]
+    );
+  }
 }
