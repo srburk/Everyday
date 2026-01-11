@@ -6,6 +6,7 @@ import {
   createHabit,
   toggleCompletion,
   archiveHabit,
+  updateHabitOrder,
 } from "../services/habitService";
 
 export function useHabits() {
@@ -54,6 +55,14 @@ export function useHabits() {
     [db, refresh]
   );
 
+  const reorder = useCallback(
+    async (orderedIds: string[]) => {
+      await updateHabitOrder(db, orderedIds);
+      await refresh();
+    },
+    [db, refresh]
+  );
+
   return {
     habits,
     loading,
@@ -62,5 +71,6 @@ export function useHabits() {
     addHabit,
     toggleCompletion: toggle,
     archiveHabit: archive,
+    reorderHabits: reorder,
   };
 }

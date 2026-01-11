@@ -3,7 +3,7 @@ import { View, StyleSheet, Pressable, Platform } from "react-native";
 import { useNavigation, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Ionicons } from "@expo/vector-icons";
-import { HabitList } from "../components/habits/HabitList";
+import { DraggableHabitList } from "../components/habits/DraggableHabitList";
 import { HabitSheet } from "../components/habits/HabitSheet";
 import { SettingsSheet } from "../components/settings/SettingsSheet";
 import { ArchivedHabitsSheet } from "../components/settings/ArchivedHabitsSheet";
@@ -14,7 +14,7 @@ import { Colors } from "../constants/colors";
 export default function HabitsScreen() {
   const navigation = useNavigation();
   const router = useRouter();
-  const { habits, loading, refresh, addHabit, toggleCompletion } = useHabits();
+  const { habits, loading, refresh, addHabit, toggleCompletion, reorderHabits } = useHabits();
   const { settings, updateSetting } = useSettings();
   const [showCreate, setShowCreate] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -47,10 +47,11 @@ export default function HabitsScreen() {
 
   return (
     <View style={styles.container}>
-      <HabitList
+      <DraggableHabitList
         habits={habits}
         onHabitPress={handleHabitPress}
         onToggle={toggleCompletion}
+        onReorder={reorderHabits}
         refreshing={loading}
         onRefresh={refresh}
       />
