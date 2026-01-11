@@ -4,35 +4,36 @@ import { useNavigation, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Ionicons } from "@expo/vector-icons";
 import { HabitList } from "../components/habits/HabitList";
-import { CreateHabitSheet } from "../components/habits/CreateHabitSheet";
+import { HabitSheet } from "../components/habits/HabitSheet";
+import { SettingsSheet } from "../components/settings/SettingsSheet";
 import { useHabits } from "../hooks/useHabits";
+import { useSettings } from "../hooks/useSettings";
 import { Colors } from "../constants/colors";
 
 export default function HabitsScreen() {
   const navigation = useNavigation();
   const router = useRouter();
   const { habits, loading, refresh, addHabit, toggleCompletion } = useHabits();
+  const { settings, updateSetting } = useSettings();
   const [showCreate, setShowCreate] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerLeft: () => (
+        <Pressable
+          onPress={() => setShowSettings(true)}
+          style={styles.headerButton}
+        >
+          <Ionicons name="settings-outline" size={24} color={Colors.systemBlue} />
+        </Pressable>
+      ),
       headerRight: () => (
         <Pressable
           onPress={() => setShowCreate(true)}
           style={styles.headerButton}
         >
-          {Platform.OS === "ios" ? (
-            <View style={styles.symbolContainer}>
-              <SymbolView
-                name="plus"
-                size={24}
-                tintColor={Colors.systemBlue}
-                weight="medium"
-              />
-            </View>
-          ) : (
-            <Ionicons name="add" size={28} color={Colors.systemBlue} />
-          )}
+          <Ionicons name="add" size={28} color={Colors.systemBlue} />
         </Pressable>
       ),
     });
@@ -52,10 +53,21 @@ export default function HabitsScreen() {
         onRefresh={refresh}
       />
 
-      <CreateHabitSheet
+      <HabitSheet
         visible={showCreate}
         onDismiss={() => setShowCreate(false)}
         onSave={addHabit}
+      />
+
+      <SettingsSheet
+        visible={showSettings}
+        onDismiss={() => setShowSettings(false)}
+        settings={settings}
+        onUpdateSetting={updateSetting}
+        onOpenArchivedHabits={() => {
+          // Will be implemented in Phase 4
+          setShowSettings(false);
+        }}
       />
     </View>
   );
@@ -66,12 +78,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerButton: {
-    marginRight: 8,
-  },
-  symbolContainer: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
+    marginHorizontal: 8,
   },
 });
