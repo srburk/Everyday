@@ -13,15 +13,17 @@ import { useSQLiteContext } from "expo-sqlite";
 import { SymbolView } from "expo-symbols";
 import { Ionicons } from "@expo/vector-icons";
 import { YearHeatmap } from "../../components/heatmap/YearHeatmap";
+import { HabitSheet } from "../../components/habits/HabitSheet";
 import { Colors } from "../../constants/colors";
 import { useHaptics } from "../../hooks/useHaptics";
 import {
   getHabitById,
   getCompletions,
   toggleCompletion,
+  updateHabit,
   archiveHabit,
 } from "../../services/habitService";
-import type { Habit, HabitCompletion } from "../../models/habit";
+import type { Habit, HabitCompletion, CreateHabitInput } from "../../models/habit";
 
 export default function HabitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,6 +35,7 @@ export default function HabitDetailScreen() {
   const [habit, setHabit] = useState<Habit | null>(null);
   const [completions, setCompletions] = useState<HabitCompletion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showEdit, setShowEdit] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -51,10 +54,19 @@ export default function HabitDetailScreen() {
     loadData();
   }, [loadData]);
 
+  const handleSaveEdit = useCallback(
+    async (input: CreateHabitInput) => {
+      if (!id) return;
+      await updateHabit(db, id, input);
+      await loadData();
+    },
+    [id, db, loadData]
+  );
+
   const handleDelete = useCallback(() => {
     Alert.alert(
       "Delete Habit",
-      "Are you sure you want to delete this habit? This action cannot be undone.",
+      "Are you sure you want to delete this habit? It will be moved to Recently Deleted.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -63,6 +75,7 @@ export default function HabitDetailScreen() {
           onPress: async () => {
             if (!id) return;
             await archiveHabit(db, id);
+            setShowEdit(false);
             router.back();
           },
         },
@@ -74,21 +87,12 @@ export default function HabitDetailScreen() {
     navigation.setOptions({
       title: habit?.name || "",
       headerRight: () => (
-        <Pressable onPress={handleDelete}>
-          {Platform.OS === "ios" ? (
-            <SymbolView
-              name="trash"
-              size={20}
-              tintColor={Colors.systemRed}
-              weight="medium"
-            />
-          ) : (
-            <Ionicons name="trash-outline" size={24} color={Colors.systemRed} />
-          )}
+        <Pressable onPress={() => setShowEdit(true)}>
+          <Ionicons name="pencil" size={22} color={Colors.systemBlue} />
         </Pressable>
       ),
     });
-  }, [navigation, habit, handleDelete]);
+  }, [navigation, habit]);
 
   const handleDayPress = async (date: string) => {
     if (!id) return;
@@ -130,7 +134,15 @@ export default function HabitDetailScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <View style={styles.header}>
-        <View style={[styles.colorBadge, { backgroundColor: habit.color }]} />
+        <View style={[styles.colorBadge, { backgroundColor: habit.color }]}>
+          {habit.icon && (
+            <Ionicons
+              name={habit.icon as keyof typeof Ionicons.glyphMap}
+              size={24}
+              color={Colors.background}
+            />
+          )}
+        </View>
         <View style={styles.headerInfo}>
           <Text style={styles.habitName}>{habit.name}</Text>
           <Text style={styles.frequency}>{getFrequencyLabel()}</Text>
@@ -167,6 +179,14 @@ export default function HabitDetailScreen() {
         </View>
         <Text style={styles.legendLabel}>More</Text>
       </View>
+
+      <HabitSheet
+        visible={showEdit}
+        onDismiss={() => setShowEdit(false)}
+        onSave={handleSaveEdit}
+        habit={habit}
+        onDelete={handleDelete}
+      />
     </ScrollView>
   );
 }
@@ -201,6 +221,8 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 12,
     marginRight: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerInfo: {
     flex: 1,

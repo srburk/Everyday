@@ -24,7 +24,17 @@ export function HabitCard({ habit, onPress, onToggle }: HabitCardProps) {
       onPress={onPress}
     >
       <View style={styles.content}>
-        <View style={[styles.colorDot, { backgroundColor: habit.color }]} />
+        {habit.icon ? (
+          <View style={[styles.iconContainer, { backgroundColor: habit.color }]}>
+            <Ionicons
+              name={habit.icon as keyof typeof Ionicons.glyphMap}
+              size={16}
+              color={Colors.background}
+            />
+          </View>
+        ) : (
+          <View style={[styles.colorDot, { backgroundColor: habit.color }]} />
+        )}
         <View style={styles.info}>
           <Text style={styles.name} numberOfLines={1}>
             {habit.name}
@@ -87,6 +97,14 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
+    marginRight: 12,
+  },
+  iconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
   info: {
