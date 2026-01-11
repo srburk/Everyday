@@ -45,6 +45,7 @@ export function HabitList({
       )}
       contentContainerStyle={styles.list}
       contentInsetAdjustmentBehavior="automatic"
+      automaticallyAdjustsScrollIndicatorInsets
       refreshing={refreshing}
       onRefresh={onRefresh}
       showsVerticalScrollIndicator={false}
@@ -54,7 +55,6 @@ export function HabitList({
 
 const styles = StyleSheet.create({
   list: {
-    paddingTop: 8,
     paddingBottom: 100,
   },
   emptyContainer: {

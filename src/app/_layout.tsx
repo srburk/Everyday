@@ -9,14 +9,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SQLiteProvider databaseName="everyday.db" onInit={initializeDatabase}>
         <StatusBar style="auto" />
-        <Stack
-          screenOptions={{
-            headerTransparent: true,
-            headerBlurEffect: "systemMaterial",
-            headerLargeTitleShadowVisible: false,
-            headerShadowVisible: false,
-          }}
-        >
+        <Stack>
           <Stack.Screen
             name="index"
             options={{
